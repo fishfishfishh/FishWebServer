@@ -27,7 +27,7 @@ TCP服务器调用accept接受连接，此时发现内核已连接队列为空�
 版权声明：本文为CSDN博主「swings_ss」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
 原文链接：https://blog.csdn.net/zhwenx3/article/details/88107428
 
-#HTTP的状态机模型
+# HTTP的状态机模型
 该部分引用与 微信公众号"两猿社"
 ![img](https://mmbiz.qpic.cn/mmbiz_jpg/6OkibcrXVmBH2ZO50WrURwTiaNKTH7tCia3AR4WeKu2EEzSgKibXzG4oa4WaPfGutwBqCJtemia3rc5V1wupvOLFjzQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
 
@@ -122,7 +122,7 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 因为是多线程写入，因此如果不加双锁，就会出现多次调用initIostream（）的情况，双锁可以解决这一问题。
 
-#目前尚未解决的问题
+# 目前尚未解决的问题
 1. HTTP协议尚未完工。
 2. 尚未与数据库连接池进行连接测试（等待Http协议完工之后进行）
 3. 压力测试（等上面两项完成之后进行）
