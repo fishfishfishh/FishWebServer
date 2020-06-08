@@ -34,7 +34,7 @@ Timeing Wheel的主循环是一个循环队列，可以自己实现，也可以�
 每个slot中的数据结构可以用双向list，也可以用unordered_set来管理链接。
 
 这里有一个小技巧，用智能指针管理链接的周期。具体实现方法如下：
-~~
+~~~
 struct EventNode
 {
 	explicit EventNode(const WeakTcpConnectionPtr& ptr)
@@ -49,7 +49,7 @@ struct EventNode
 	}
 	WeakTcpConnectionPtr weakPtr;
 };
-~~
+~~~
 timeWheel管理的是每一个EventNode的shared_ptr,每一个链接有且只有一个唯一的shared_ptr<EventNode> 
 
 然后我们在EventNode的析构函数中处理链接即可。
