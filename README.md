@@ -16,9 +16,49 @@ it is a toy webserver based on reactor model
 TCP服务器调用accept接受连接，此时发现内核已连接队列为空（因为唯一的连接已被客户端取消）
 程序阻塞在accept调用，无法响应其它已连接套接字的事件
 为了防止出现上面的场景，我们需要把监听套接字设置为非阻塞
+
+
+
 ————————————————
 版权声明：本文为CSDN博主「swings_ss」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
 原文链接：https://blog.csdn.net/zhwenx3/article/details/88107428
 
 #HTTP的状态机模型
+该部分引用与 微信公众号"两猿社"
 ![img](https://mmbiz.qpic.cn/mmbiz_jpg/6OkibcrXVmBH2ZO50WrURwTiaNKTH7tCia3AR4WeKu2EEzSgKibXzG4oa4WaPfGutwBqCJtemia3rc5V1wupvOLFjzQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+# 用 Timing Wheel 踢掉空闲的链接
+![img](https://upload-images.jianshu.io/upload_images/2116753-4fac9916aef57694.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+Timeing Wheel的主循环是一个循环队列，可以自己实现，也可以使用std::deque来实现，这里我是用的是boost::circular_buffer来做的。
+
+每个slot中的数据结构可以用双向list，也可以用unordered_set来管理链接。
+
+这里有一个小技巧，用智能指针管理链接的周期。具体实现方法如下：
+~~
+struct EventNode
+{
+	explicit EventNode(const WeakTcpConnectionPtr& ptr)
+		:weakPtr(ptr)
+	{ }
+	~EventNode()
+	{
+		auto ptr = weakPtr.lock();
+		if (ptr != nullptr) {
+			ptr->closeSocket();
+		}
+	}
+	WeakTcpConnectionPtr weakPtr;
+};
+~~
+timeWheel管理的是每一个EventNode的shared_ptr,每一个链接有且只有一个唯一的shared_ptr<EventNode> 
+
+然后我们在EventNode的析构函数中处理链接即可。
+
+因此我们就面临一个循环嵌套的问题，及在TcpConnection中含有EventNode的shared_ptr,然后再EventNode中也含有TcpConnection的shared_ptr，所以必须有一个是weak_ptr,改哪一个好呢？
+
+TcpConnection中的EventNode一定是Weak_ptr,若是shared_ptr,则TimeWheel就不能删除任何一个链接，因为EventNode永远存在（主动关闭连接除外）。
+
+EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时候,所有的TcpConnection不能正常析构，只有在TimeWheel转动到时间了，才正常析构。
+
+所以，最好的方式就是两个都是Weak_ptr包含在对方的Class。
+
