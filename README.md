@@ -61,4 +61,10 @@ TcpConnection中的EventNode一定是Weak_ptr,若是shared_ptr,则TimeWheel就�
 EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时候,所有的TcpConnection不能正常析构，只有在TimeWheel转动到时间了，才正常析构。
 
 所以，最好的方式就是两个都是Weak_ptr包含在对方的Class。
-
+# 如何实现Log日志的输出级别调整
+该部分参考 陈硕先生muduo里的Logging.h中的实现手法。
+使用
+~~~
+#define if(a) / b
+~~~
+这种形式就可以简单的实现输出级别的调整。
