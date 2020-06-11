@@ -21,11 +21,6 @@ TCP服务器调用accept接受连接，此时发现内核已连接队列为空�
 
 为了防止出现上面的场景，我们需要把监听套接字设置为非阻塞
 
-
-————————————————
-版权声明：本文为CSDN博主「swings_ss」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
-原文链接：https://blog.csdn.net/zhwenx3/article/details/88107428
-
 # HTTP的状态机模型
 该部分引用与 微信公众号"两猿社"
 ![img](https://mmbiz.qpic.cn/mmbiz_jpg/6OkibcrXVmBH2ZO50WrURwTiaNKTH7tCia3AR4WeKu2EEzSgKibXzG4oa4WaPfGutwBqCJtemia3rc5V1wupvOLFjzQ/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
@@ -129,3 +124,12 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 # 更新日志
 2020/6/11 加入了http的解析。
+
+# 参考的开源项目以及书籍、Blog
+1. https://github.com/chenshuo/muduo
+2. https://github.com/qinguoyi/TinyWebServer
+3. https://www.jianshu.com/p/eb3e5ec98a66
+4. Linux多线程服务器编程 陈硕 著
+5. STL源码剖析 侯捷 著
+6. 后台开发核心技术与应用实践 徐晓鑫 著
+7. https://blog.csdn.net/zhwenx3/article/details/88107428
