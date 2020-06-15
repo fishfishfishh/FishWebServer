@@ -5,6 +5,19 @@ class HttpConnection : public TcpConnection
 {
 	typedef std::string::iterator strIter;
 public:
+	enum HttpStatusCode
+	{
+		kUnknown,
+		k200Ok = 200,
+		k301MovedPermanently = 301,
+		k400BadRequest = 400,
+		k401Unauthorized = 401,
+		k40Forbidden = 403,
+		k404NotFound = 404,
+		k500InternalServerError = 500,
+		k503ServerUnavailable = 503
+	};
+
 	enum HttpVersion
 	{
 		Unknown, Http10, Http11
@@ -50,31 +63,43 @@ public:
 		OPTIONS,
 		CONNECT,
 	};
+	LINE_STATUS getlineStatus() {
+		return lineStatus;
+	}
+	HTTP_CODE getretStatus() {
+		return retStatus;
+	}
 	HttpConnection(int fd, int epoll)
 		:processLength(0), checkState(CHECK_STATE_REQUESTLINE),
-		lineStatus(LINE_OK),linger(true), contentLength(0)
-		, requestMethod(INVALID), version(Unknown), connectionState(UNKNOWN)
-		,TcpConnection(fd,epoll){
-		start = message.begin();
-		end = message.end();
+		lineStatus(LINE_BAD),linger(true), contentLength(0)
+		, requestMethod(INVALID), version(HttpVersion::Unknown), connectionState(UNKNOWN)
+		,TcpConnection(fd,epoll), statusCode(HttpStatusCode::kUnknown), retStatus(NO_REQUEST){
+		message.clear();
 	}
 	//进入此函数，应是读事件
 	void processMessage() {
 		message += inputBuffer.getMessageAsString();
-		if (httpMessageDecode() == NO_REQUEST) {
-			if (lineStatus == LINE_BAD) {
-				printf("lineStatus bad\n");
-			}
-			else if (lineStatus == LINE_END) {
-				printf("lineStatus OK\n");
-			}
-		}
-		else{
-			printf("HTTP_CODE BAD_REQUEST\n");
-		}
-		printf("%s", message.c_str());
+		start = message.begin();
+		end = message.end();
+		std::cout << message << std::endl;
+		httpMessageDecode();
+		sockets::update(EPOLLOUT | EPOLLONESHOT | EPOLLRDHUP, getSocketfd(), epollfd);
 	}
-
+	std::string& getRequestPath();
+	void clear() {
+		checkState = CHECK_STATE_REQUESTLINE;
+		processLength = 0;
+		requestMethod = INVALID;
+		lineStatus = LINE_BAD;
+		linger = true;
+		contentLength = 0;
+		connectionState = UNKNOWN;
+		statusCode = kUnknown;
+		retStatus = NO_REQUEST;
+		message.clear();
+		start = message.begin();
+		end = message.end();
+	}
 private:
 	METHOD getMethod(std::string::iterator begin, std::string::iterator end) {
 		assert(requestMethod == INVALID);
@@ -97,6 +122,7 @@ private:
 
 	
 	LINE_STATUS lineStatus;
+	HTTP_CODE retStatus;
 	CHECK_STATE checkState;
 	HTTP_CODE  httpMessageDecode();
 	//bool httpMessageWrite();				//此函数将结果copy to outputBuffer
@@ -112,7 +138,7 @@ private:
 	HttpVersion version;			//Http版本记录
 	int contentLength;				//以8进制表示的请求体的长度
 	CONNECTION_STATE connectionState;	//客户端（浏览器）想要优先使用的连接类型	keep-alive or close
-
+	HttpStatusCode statusCode;
 	//std::string cookie;				//	由之前服务器通过Set-Cookie设置的一个HTTP协议Cookie
 	//std::string cookieControl;		//是否可以被缓存（public可以；private和no - cache不可以；max - age表示可被缓存的时间长）
 
@@ -140,6 +166,8 @@ private:
 	HTTP_CODE parseHeader();
 	HTTP_CODE doRequest();
 	HTTP_CODE parseContent();
+
+
 
 	std::string requestPath;
 	std::string requestQuery;
