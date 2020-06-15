@@ -116,7 +116,7 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 因为是多线程写入，因此如果不加双锁，就会出现多次调用initIostream（）的情况，双锁可以解决这一问题。
 
-# 目前尚未解决的问题H
+# 目前尚未解决的问题
 1. HTTP协议尚未完工。
 2. 尚未与数据库连接池进行连接测试（等待Http协议完工之后进行）
 3. 压力测试（等上面两项完成之后进行）
@@ -124,7 +124,7 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 # 更新日志
 2020/6/11 加入了http的解析。
-
+2020/6/15 加入了html文件，完善了http的解析工作。
 # 参考的开源项目以及书籍、Blog
 1. https://github.com/chenshuo/muduo
 2. https://github.com/qinguoyi/TinyWebServer
