@@ -7,28 +7,27 @@ bool HttpConnection::setHearMethod(std::string& str, strIter begin, strIter end)
 	//我想到如果用到reflex + function overloading，可能会好一些，但是CPP没有reflex,怎么办？用map + decltype？
 	//现在暂时交由以后处理,暂时先全部返回True
 	requestHeader[str] = std::string(begin, end);
+	std::cout << str << "\t" << requestHeader[str];
 	return true;
 }
 
 HttpConnection::HTTP_CODE HttpConnection::httpMessageDecode()
 {
-	HTTP_CODE ret = NO_REQUEST;
 	while ((checkState == CHECK_STATE_CONTENT and lineStatus == LINE_OK) or (lineStatus = parseLine()) == LINE_OK)
 	{
 		switch (checkState)
 		{
 		case CHECK_STATE_REQUESTLINE:
-			ret = parseRequestLine();
-
-			if (ret == BAD_REQUEST)		return BAD_REQUEST;
+			retStatus = parseRequestLine();
+			if (retStatus == BAD_REQUEST)		return BAD_REQUEST;
 			break;
 		case CHECK_STATE_HEADER:
-			ret = parseHeader();
-			if (ret == BAD_REQUEST)		return BAD_REQUEST;
+			retStatus = parseHeader();
+			if (retStatus == BAD_REQUEST)		return BAD_REQUEST;
 			break;
 		case CHECK_STATE_CONTENT:
-			ret = parseContent();
-			if (ret == BAD_REQUEST)		return BAD_REQUEST;
+			retStatus = parseContent();
+			if (retStatus == BAD_REQUEST)		return BAD_REQUEST;
 			lineStatus = LINE_END;
 			break;
 		default:
@@ -36,7 +35,6 @@ HttpConnection::HTTP_CODE HttpConnection::httpMessageDecode()
 			break;
 		}
 	}
-
 	return NO_REQUEST;
 }
 HttpConnection::LINE_STATUS HttpConnection::parseLine()
@@ -113,8 +111,9 @@ HttpConnection::HTTP_CODE HttpConnection::parseHeader()
 	//若没找到":"
 	if (space == end) {
 		//到达空行
-		if (std::string(start, end) == "\r\n") {
+		if (std::string(start + 1, end) == "\r\n") {
 			//下一行
+			
 			start = end;
 			checkState = CHECK_STATE_CONTENT;
 			return GET_REQUEST;
@@ -135,5 +134,11 @@ HttpConnection::HTTP_CODE HttpConnection::parseHeader()
 HttpConnection::HTTP_CODE HttpConnection::parseContent()
 {
 	requestBody = std::string(start, end);
-	return GET_REQUEST;
+	std::cout << requestBody.empty() << std::endl;
+	return requestBody.empty() ? NO_REQUEST : GET_REQUEST;
+}
+
+std::string& HttpConnection::getRequestPath()
+{
+	return requestPath;
 }
