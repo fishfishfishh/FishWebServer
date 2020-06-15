@@ -123,8 +123,8 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 4. 因为本人在使用Visual Studio 2017 的SSH远程连接树莓派4B进行编码工作，因此暂时不提供makeFile文件 - =，以后加上~。
 
 # 更新日志
-2020/6/11 加入了http的解析。
-2020/6/15 加入了html文件，完善了http的解析工作。
+2020/6/11 加入了http的解析。</br>
+2020/6/15 加入了html文件，完善了http的解析工作。</br>
 # 参考的开源项目以及书籍、Blog
 1. https://github.com/chenshuo/muduo
 2. https://github.com/qinguoyi/TinyWebServer
