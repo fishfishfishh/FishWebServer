@@ -29,7 +29,8 @@ class TcpServer
 {
 public:
     typedef std::vector<epoll_event>  EventVector;
-    typedef std::unordered_map<int, TcpConnectionPtr> TcpMap;
+    typedef std::map<int, TcpConnectionPtr> TcpMap;
+	typedef std::array<TcpConnectionPtr, 65536> TcpArray;
 	TcpServer(std::string ipAddr, uint16_t port);
     void sethandleRead(const handleEventCallBack& cb) { handleRead = cb; }
     void sethandleWrite(const handleEventCallBack& cb) { handleWrite = cb; }
@@ -55,11 +56,11 @@ private:
 	int m_epollfd;
     int m_listenfd;
     int start_loop;
-    TcpMap userMap;
+    //TcpMap userMap;
+	TcpArray userArray;
     ThreadPool handleEventsPool;
 
 	//timer
 	int socketPair[2];
 	TimeWheel timeWheel;
 };
-
