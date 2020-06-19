@@ -76,8 +76,9 @@ void TcpServer::newConnection(int socketfd)
         //std::cout << newConn->getSocketfd() << "\t" << "success connection!" << std::endl;
     }
     int newSocketfd = newConn->getSocketfd();
-    assert(userMap.count(newSocketfd) == 0);
-    userMap[newSocketfd] = newConn;
+    
+	assert(userArray[socketfd].get() == nullptr);
+    userArray[newSocketfd] = newConn;
     sockets::addfd(m_epollfd, newSocketfd);
     newConn->setCloseCallback(std::bind((void(TcpServer::*)(const TcpConnectionPtr))&TcpServer::removeConnection, this, std::placeholders::_1));
 
@@ -89,24 +90,23 @@ void TcpServer::newConnection(int socketfd)
 
 void TcpServer::removeConnection(int socketfd)
 {
-    assert(userMap.count(socketfd));
-    userMap[socketfd]->closeSocket();
-    userMap.erase(socketfd);
+	assert(userArray[socketfd].get() != nullptr);
+	userArray[socketfd]->closeSocket();
 }
 
 void TcpServer::removeConnection(const TcpConnectionPtr ptr)
 {
-    userMap.erase(ptr->getSocketfd());
+	userArray[ptr->getSocketfd()] = TcpConnectionPtr();
 }
 
 void TcpServer::processEvents(int sockfd, const handleEventCallBack& events)
 {
 	//判断是否被timer断了链接。
-	if (userMap.count(sockfd) == 0)		return;
+	if (userArray[sockfd].get() == nullptr)		return;
 	else {
-		timeWheel.push(userMap[sockfd]->getNodePtr());
-		userMap[sockfd]->setHandleEvents(events);
-		handleEventsPool.append(WeakTcpConnectionPtr(userMap[sockfd]));
+		timeWheel.push(userArray[sockfd]->getNodePtr());
+		userArray[sockfd]->setHandleEvents(events);
+		if (!handleEventsPool.append(WeakTcpConnectionPtr(userArray[sockfd])))		removeConnection(sockfd);
 	}
 }
 
@@ -128,6 +128,7 @@ void TcpServer::start()
             }
             //Tcp链接断开
             else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+				//std::cout << "removeConnection " << userMap[sockfd].use_count() << " id :" << userMap[sockfd]->getSocketfd() << std::endl;
                 removeConnection(sockfd);
             }
 			//处理信号
@@ -135,16 +136,17 @@ void TcpServer::start()
 			{
 				char signals[1024];
 				int ret = recv(socketPair[0], signals, sizeof(signals), 0);
-				//std::cout << "tick" << std::endl;
 				timeWheel.tick();
 				alarm(TIMESLOT);
 			}
             //处理客户连接上接收到的数据
             else if (events[i].events & EPOLLIN) {
+				//std::cout << "read " << userMap[sockfd].use_count() << " id :" << userMap[sockfd]->getSocketfd() << std::endl;
 				processEvents(sockfd, handleRead);
             }
             //发送数据
             else if (events[i].events & EPOLLOUT) {
+				//std::cout << "write " << userMap[sockfd].use_count() << " id :" << userMap[sockfd]->getSocketfd() << std::endl;
 				processEvents(sockfd, handleWrite);
             }
 
