@@ -43,6 +43,7 @@ public:
 	}
 private:
 	int initialSocketfd();
+	
 private:
     handleEventCallBack handleRead;
     handleEventCallBack handleWrite;
