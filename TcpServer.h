@@ -43,7 +43,6 @@ public:
 	}
 private:
 	int initialSocketfd();
-	
 private:
     handleEventCallBack handleRead;
     handleEventCallBack handleWrite;
@@ -65,3 +64,4 @@ private:
 	int socketPair[2];
 	TimeWheel timeWheel;
 };
+
