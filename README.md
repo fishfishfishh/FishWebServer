@@ -1,4 +1,11 @@
+[TOC]
+
+
+
+
+
 # FishWebServer
+
 it is a toy webserver based on reactor model 
 
 
@@ -117,9 +124,9 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 因为是多线程写入，因此如果不加双锁，就会出现多次调用initIostream（）的情况，双锁可以解决这一问题。
 
 # 目前尚未解决的问题
-1. HTTP协议尚未完工。
-2. 尚未与数据库连接池进行连接测试（等待Http协议完工之后进行）
-3. 压力测试（等上面两项完成之后进行）
+1. HTTP协议尚未完工。	基本完工
+2. 尚未与数据库连接池进行连接测试（计划用mySQL储存，Redis缓存）
+3. 压力测试（完成）
 4. 因为本人在使用Visual Studio 2017 的SSH远程连接树莓派4B进行编码工作，因此暂时不提供makeFile文件 - =，以后加上~。
 
 # 更新日志
