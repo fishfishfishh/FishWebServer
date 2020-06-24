@@ -27,39 +27,10 @@ void HttpServer::handleWrite(TcpConnectionPtr ptr)
 	{
 		//GET
 		if (upCastptr->getRequestPath() == "/") {
-			std::string content;
-			char tempBuf[200];
-			int fd = open("/home/pi/projects/HttpServerForLinux/html/SignIn.html", O_RDONLY);
-			int ret;
-			while ((ret = read(fd, tempBuf, 200)) > 0) {
-				content += std::string(tempBuf, tempBuf + ret);
-			}
-			upCastptr->write("Content-Length: ");
-			upCastptr->write(std::to_string(content.size()));
-			upCastptr->write("\r\n");
-			upCastptr->write("Content-Type: ");
-			upCastptr->write("text/html");
-			upCastptr->write("\r\n");
-			upCastptr->write(blank);
-			upCastptr->write(content);
-
+			responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
 		}
 		else {
-			std::string content;
-			char tempBuf[200];
-			int fd = open(upCastptr->getRequestPath().c_str(), O_RDONLY);
-			int ret;
-			while ((ret = read(fd, tempBuf, 200)) > 0) {
-				content += std::string(tempBuf, tempBuf + ret);
-			}
-			upCastptr->write("Content-Length: ");
-			upCastptr->write(std::to_string(content.size()));
-			upCastptr->write("\r\n");
-			upCastptr->write("Content-Type: ");
-			upCastptr->write(upCastptr->getContentType());
-			upCastptr->write("\r\n");
-			upCastptr->write(blank);
-			upCastptr->write(content);
+			responseInfo(upCastptr->getRequestPath().c_str(), upCastptr->getContentType(), upCastptr);
 		}
 		break;
 	}
@@ -80,7 +51,7 @@ void HttpServer::handleWrite(TcpConnectionPtr ptr)
 			break;
 			//change password
 		case 'p':
-			changePassword(content);
+			changePassword(content, upCastptr);
 			break;
 		default:
 			//never came here
@@ -110,14 +81,33 @@ void HttpServer::handleWrite(TcpConnectionPtr ptr)
 	}
 	else {
 		sockets::update(EPOLLIN | EPOLLONESHOT | EPOLLRDHUP, upCastptr->getSocketfd(), upCastptr->getepollfd());
-		//这里在http长连接中可能会出问题，之后再改
 		upCastptr->clearAll();
 	}
 }
 
 void HttpServer::signUp(std::string &word, HttpConnection* upCastptr)
 {
+	auto iterFirst = word.find_first_of('&');
+	auto iterSecond = word.find_last_of('&');
+	auto userIter = std::find(word.begin(), word.begin() + iterFirst, '=');
+	std::string username = std::string(userIter + 1, word.begin() + iterFirst);
 
+	auto conn = ConnectionPool::getInstance().take();
+	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
+	if (r->str == nullptr) {
+		auto passwordIter = std::find(word.begin() + iterFirst + 1, word.begin() + iterSecond, '=');
+		std::string password = std::string(passwordIter + 1, word.begin() + iterSecond);
+		redisReply* reply = (redisReply*)redisCommand(conn->context, "SET %s %s", username.c_str(), password.c_str());
+		freeReplyObject(reply);
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
+	}
+	else {
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignUp.html", "text/html", upCastptr);
+	}
+
+
+	freeReplyObject(r);
+	ConnectionPool::getInstance().push(conn);
 }
 
 void HttpServer::signIn(std::string &word, HttpConnection* upCastptr)
@@ -131,43 +121,57 @@ void HttpServer::signIn(std::string &word, HttpConnection* upCastptr)
 	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
 
 	if (r->str == nullptr or std::string(r->str) != password) {
-		std::string content;
-		char tempBuf[200];
-		int fd = open("/home/pi/projects/HttpServerForLinux/html/SignInError.html", O_RDONLY);
-		int ret;
-		while ((ret = read(fd, tempBuf, 200)) > 0) {
-			content += std::string(tempBuf, tempBuf + ret);
-		}
-		upCastptr->write("Content-Length: ");
-		upCastptr->write(std::to_string(content.size()));
-		upCastptr->write("\r\n");
-		upCastptr->write("Content-Type: ");
-		upCastptr->write("text/html");
-		upCastptr->write("\r\n");
-		upCastptr->write(blank);
-		upCastptr->write(content);
-
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignInError.html", "text/html", upCastptr);
 	}
 	else {
-		std::string content;
-		char tempBuf[200];
-		int fd = open("/home/pi/projects/HttpServerForLinux/html/HTMLPage.html", O_RDONLY);
-		int ret;
-		while ((ret = read(fd, tempBuf, 200)) > 0) {
-			content += std::string(tempBuf, tempBuf + ret);
-		}
-		upCastptr->write("Content-Length: ");
-		upCastptr->write(std::to_string(content.size()));
-		upCastptr->write("\r\n");
-		upCastptr->write("Content-Type: ");
-		upCastptr->write("text/html");
-		upCastptr->write("\r\n");
-		upCastptr->write(blank);
-		upCastptr->write(content);
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/HTMLPage.html", "text/html", upCastptr);
 	}
+	freeReplyObject(r);
+	ConnectionPool::getInstance().push(conn);
 }
 
-void HttpServer::changePassword(std::string &word)
+void HttpServer::changePassword(std::string &word, HttpConnection* upCastptr)
 {
-	std::cout << "changePassword" << std::endl;
+	auto iterFirst = word.find_first_of('&');
+	auto iterSecond = word.find_last_of('&');
+	auto userIter = std::find(word.begin(), word.begin() + iterFirst, '=');
+	std::string username = std::string(userIter + 1, word.begin() + iterFirst);
+
+	auto oldpasswordIter = std::find(word.begin() + iterFirst + 1, word.begin() + iterSecond, '=');
+	std::string oldpassword = std::string(oldpasswordIter + 1, word.begin() + iterSecond);
+
+	auto conn = ConnectionPool::getInstance().take();
+	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
+
+	if (r->str == nullptr or std::string(r->str) != oldpassword) {
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/ChangePasswordError.html", "text/html", upCastptr);
+	}
+	else {
+		auto newpasswordIter = std::find(word.begin() + iterSecond + 1, word.end(), '=');
+		std::string newpassword = std::string(newpasswordIter + 1, word.end());
+		redisReply* reply = (redisReply*)redisCommand(conn->context, "SET %s %s", username.c_str(), newpassword.c_str());
+		freeReplyObject(reply);
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
+	}
+	freeReplyObject(r);
+	ConnectionPool::getInstance().push(conn);
+}
+
+void HttpServer::responseInfo(const std::string & path, const  std::string &type, HttpConnection* upCastptr)
+{
+	std::string content;
+	char tempBuf[200];
+	int fd = open(path.c_str(), O_RDONLY);
+	int ret;
+	while ((ret = read(fd, tempBuf, 200)) > 0) {
+		content += std::string(tempBuf, tempBuf + ret);
+	}
+	upCastptr->write("Content-Length: ");
+	upCastptr->write(std::to_string(content.size()));
+	upCastptr->write("\r\n");
+	upCastptr->write("Content-Type: ");
+	upCastptr->write(type);
+	upCastptr->write("\r\n");
+	upCastptr->write(blank);
+	upCastptr->write(content);
 }

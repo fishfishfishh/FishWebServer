@@ -15,6 +15,8 @@ public:
 private:
 	void signUp(std::string&, HttpConnection*);
 	void signIn(std::string&, HttpConnection*);
-	void changePassword(std::string&);
+	void changePassword(std::string&, HttpConnection*);
+	void responseInfo(const std::string&, const std::string&, HttpConnection*);
 	TcpServer server;
 };
+
