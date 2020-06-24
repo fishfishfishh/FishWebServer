@@ -133,6 +133,9 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 2020/6/11 加入了http的解析。</br>
 2020/6/15 加入了html文件，完善了http的解析工作。</br>
 2020/6/19 加入了压力测试，完善了一下httpServer. </br>
+
+2020/6/24 完善了后台逻辑，暂时用Redis充当数据库，后面开始完成MySql和Redis的协同工作. </br>
+
 ## 服务器压力测试
 
 ### 测试平台 
