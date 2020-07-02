@@ -136,6 +136,8 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 2020/6/24 完善了后台逻辑，暂时用Redis充当数据库，后面开始完成MySql和Redis的协同工作. </br>
 
+2020/7/2  完善了后台逻辑，完成简易的MySql和Redis的协同工作. </br>
+
 ## 服务器压力测试
 
 ### 测试平台 
