@@ -17,6 +17,7 @@ private:
 	void signIn(std::string&, HttpConnection*);
 	void changePassword(std::string&, HttpConnection*);
 	void responseInfo(const std::string&, const std::string&, HttpConnection*);
+	std::string& mySqlCommand(std::string&);
 	TcpServer server;
 };
 

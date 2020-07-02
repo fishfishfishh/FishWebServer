@@ -1,6 +1,7 @@
 #include "HttpServer.h"
 #include <boost/implicit_cast.hpp>
 #include "CallBacks.h"
+#include <stdio.h>
 void HttpServer::handleRead(TcpConnectionPtr ptr)
 {
 	ptr->read();
@@ -92,22 +93,31 @@ void HttpServer::signUp(std::string &word, HttpConnection* upCastptr)
 	auto userIter = std::find(word.begin(), word.begin() + iterFirst, '=');
 	std::string username = std::string(userIter + 1, word.begin() + iterFirst);
 
-	auto conn = ConnectionPool::getInstance().take();
-	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
-	if (r->str == nullptr) {
+	auto connRedis = ConnectionPool<RedisContext>::getInstance().take();
+	redisReply* r = (redisReply*)redisCommand(connRedis->context, "GET %s", username.c_str());
+
+	char buffer[100];
+	snprintf(buffer, 100, "select password from user_tab where id = '%s'", username.c_str());
+	std::string mysqlWord = std::string(buffer);
+	auto curStr = mySqlCommand(mysqlWord);
+	if (curStr.empty()) {
 		auto passwordIter = std::find(word.begin() + iterFirst + 1, word.begin() + iterSecond, '=');
 		std::string password = std::string(passwordIter + 1, word.begin() + iterSecond);
-		redisReply* reply = (redisReply*)redisCommand(conn->context, "SET %s %s", username.c_str(), password.c_str());
+		std::string email = std::string(word.begin() + iterSecond + 1, word.end());
+		snprintf(buffer, 100, "insert into user_tab(id,password,email) values('%s','%s','%s')", username.c_str(), password.c_str(), email.c_str());
+		mysqlWord = std::string(buffer);
+		mySqlCommand(mysqlWord);
+		redisReply* reply = (redisReply*)redisCommand(connRedis->context, "SET %s %s", username.c_str(), password.c_str());
 		freeReplyObject(reply);
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
 	}
 	else {
-		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignUp.html", "text/html", upCastptr);
+		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignUpError.html", "text/html", upCastptr);
 	}
 
 
 	freeReplyObject(r);
-	ConnectionPool::getInstance().push(conn);
+	ConnectionPool<RedisContext>::getInstance().push(connRedis);
 }
 
 void HttpServer::signIn(std::string &word, HttpConnection* upCastptr)
@@ -117,17 +127,29 @@ void HttpServer::signIn(std::string &word, HttpConnection* upCastptr)
 	std::string username = std::string(userIter + 1, word.begin() + iter);
 	auto passwordIter = std::find(word.begin() + iter + 1, word.end(), '=');
 	std::string password = std::string(passwordIter + 1, word.end());
-	auto conn = ConnectionPool::getInstance().take();
-	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
+	auto connRedis = ConnectionPool<RedisContext>::getInstance().take();
+	redisReply* r = (redisReply*)redisCommand(connRedis->context, "GET %s", username.c_str());
+	if (r->str == nullptr) {
+		char buffer[100];
+		snprintf(buffer, 100, "select password from user_tab where id = '%s'", username.c_str());
+		std::string mysqlWord = std::string(buffer);
 
-	if (r->str == nullptr or std::string(r->str) != password) {
+		if (mySqlCommand(mysqlWord) == password)
+			responseInfo("/home/pi/projects/HttpServerForLinux/html/HTMLPage.html", "text/html", upCastptr);
+		else
+			responseInfo("/home/pi/projects/HttpServerForLinux/html/SignInError.html", "text/html", upCastptr);
+		redisReply* raw_reply = (redisReply*)redisCommand(connRedis->context, "SET %s %s", username.c_str(), password.c_str());
+		freeReplyObject(raw_reply);
+	}
+	else if (std::string(r->str) != password) {
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignInError.html", "text/html", upCastptr);
 	}
 	else {
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/HTMLPage.html", "text/html", upCastptr);
 	}
+
 	freeReplyObject(r);
-	ConnectionPool::getInstance().push(conn);
+	ConnectionPool<RedisContext>::getInstance().push(connRedis);
 }
 
 void HttpServer::changePassword(std::string &word, HttpConnection* upCastptr)
@@ -140,21 +162,45 @@ void HttpServer::changePassword(std::string &word, HttpConnection* upCastptr)
 	auto oldpasswordIter = std::find(word.begin() + iterFirst + 1, word.begin() + iterSecond, '=');
 	std::string oldpassword = std::string(oldpasswordIter + 1, word.begin() + iterSecond);
 
-	auto conn = ConnectionPool::getInstance().take();
-	redisReply* r = (redisReply*)redisCommand(conn->context, "GET %s", username.c_str());
+	auto connRedis = ConnectionPool<RedisContext>::getInstance().take();
+	redisReply* r = (redisReply*)redisCommand(connRedis->context, "GET %s", username.c_str());
 
-	if (r->str == nullptr or std::string(r->str) != oldpassword) {
+
+	if (r->str == nullptr) {
+		char buffer[100];
+		snprintf(buffer, 100, "select password from user_tab where id = '%s'", username.c_str());
+		std::string mysqlWord = std::string(buffer);
+		if (mySqlCommand(mysqlWord).empty()) {
+			responseInfo("/home/pi/projects/HttpServerForLinux/html/ChangePasswordError.html", "text/html", upCastptr);
+		}
+		else {
+			auto newpasswordIter = std::find(word.begin() + iterSecond + 1, word.end(), '=');
+			std::string newpassword = std::string(newpasswordIter + 1, word.end());
+
+			redisReply* reply = (redisReply*)redisCommand(connRedis->context, "SET %s %s", username.c_str(), newpassword.c_str());
+
+			char buffer[100];
+			snprintf(buffer, 100, "update user_tab set password = '%s' where id = '%s'", newpassword.c_str(), username.c_str());
+			std::string mysqlWord = std::string(buffer);
+			mySqlCommand(mysqlWord);
+
+
+			freeReplyObject(reply);
+			responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
+		}
+	}
+	else if (std::string(r->str) != oldpassword) {
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/ChangePasswordError.html", "text/html", upCastptr);
 	}
 	else {
 		auto newpasswordIter = std::find(word.begin() + iterSecond + 1, word.end(), '=');
 		std::string newpassword = std::string(newpasswordIter + 1, word.end());
-		redisReply* reply = (redisReply*)redisCommand(conn->context, "SET %s %s", username.c_str(), newpassword.c_str());
+		redisReply* reply = (redisReply*)redisCommand(connRedis->context, "SET %s %s", username.c_str(), newpassword.c_str());
 		freeReplyObject(reply);
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
 	}
 	freeReplyObject(r);
-	ConnectionPool::getInstance().push(conn);
+	ConnectionPool<RedisContext>::getInstance().push(connRedis);
 }
 
 void HttpServer::responseInfo(const std::string & path, const  std::string &type, HttpConnection* upCastptr)
@@ -174,4 +220,23 @@ void HttpServer::responseInfo(const std::string & path, const  std::string &type
 	upCastptr->write("\r\n");
 	upCastptr->write(blank);
 	upCastptr->write(content);
+}
+
+std::string & HttpServer::mySqlCommand(std::string & mysqlWord)
+{
+	auto conn = ConnectionPool<MySQLContext>::getInstance().take();
+	std::string res = "";
+	if (mysql_query(conn->context, mysqlWord.c_str())) {
+		LOG_ERROR("%s\n", mysql_error(conn->context));
+		return res;
+	}
+
+	MYSQL_RES *result = mysql_store_result(conn->context);
+	MYSQL_ROW sql_row;
+	sql_row = mysql_fetch_row(result);
+	if (sql_row != nullptr)
+		res = std::string(sql_row[0]);
+	mysql_free_result(result);
+	ConnectionPool<MySQLContext>::getInstance().push(conn);
+	return res;
 }
