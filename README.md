@@ -125,7 +125,7 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 # 目前尚未解决的问题
 1. HTTP协议尚未完工。	基本完工
-2. 尚未与数据库连接池进行连接测试（计划用mySQL储存，Redis缓存）
+2. 尚未与数据库连接池进行连接测试（计划用mySQL储存，Redis缓存）    基本完工
 3. 压力测试（完成）
 4. 因为本人在使用Visual Studio 2017 的SSH远程连接树莓派4B进行编码工作，因此暂时不提供makeFile文件 - =，以后加上~。
 
