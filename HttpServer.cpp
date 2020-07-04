@@ -196,6 +196,13 @@ void HttpServer::changePassword(std::string &word, HttpConnection* upCastptr)
 		auto newpasswordIter = std::find(word.begin() + iterSecond + 1, word.end(), '=');
 		std::string newpassword = std::string(newpasswordIter + 1, word.end());
 		redisReply* reply = (redisReply*)redisCommand(connRedis->context, "SET %s %s", username.c_str(), newpassword.c_str());
+
+		char buffer[100];
+		snprintf(buffer, 100, "update user_tab set password = '%s' where id = '%s'", newpassword.c_str(), username.c_str());
+		std::string mysqlWord = std::string(buffer);
+		mySqlCommand(mysqlWord);
+
+
 		freeReplyObject(reply);
 		responseInfo("/home/pi/projects/HttpServerForLinux/html/SignIn.html", "text/html", upCastptr);
 	}
