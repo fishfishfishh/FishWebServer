@@ -129,11 +129,13 @@ EventNode的TcpConnection呢？若是shared_ptr，那么主动关闭连接的时
 
 ## 查找流程：
 
-![image-20200704114632971](https://github.com/fishfishfishh/FishWebServer/blob/master/picture/image-20200704114632971.png?raw=true)
+![image-20200704114632971](https://github.com/fishfishfishh/FishWebServer/blob/master/FishWebServer/picture/image-20200704114632971.png?raw=true)
+
+
 
 ## 更改流程：
 
-![image-20200704120608103](https://github.com/fishfishfishh/FishWebServer/blob/master/picture/image-20200704120608103.png?raw=true)
+![image-20200704120608103](https://github.com/fishfishfishh/FishWebServer/blob/master/FishWebServer/picture/image-20200704114632971.png?raw=true)
 
 读取缓存步骤一般没有什么问题，但是一旦涉及到数据更新：数据库和缓存更新，就容易出现缓存(Redis)和数据库（MySQL）间的数据一致性问题。
 
